@@ -180,32 +180,33 @@ class NetworkStatus:
     self.updated = datetime.datetime(*map(int, m.groups()))
 
 class Event:
-  def __init__(self, event_name):
+  def __init__(self, event_name, body=None):
+    self.body = body
     self.event_name = event_name
     self.arrived_at = 0
     self.state = EVENT_STATE.PRISTINE
 
 class TimerEvent(Event):
-  def __init__(self, event_name, type):
-    Event.__init__(self, event_name)
-    self.type = type
+  def __init__(self, event_name, body):
+    Event.__init__(self, event_name, body)
+    self.type = body
 
 class NetworkStatusEvent(Event):
-  def __init__(self, event_name, nslist):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, nslist, body):
+    Event.__init__(self, event_name, body)
     self.nslist = nslist # List of NetworkStatus objects
 
 class NewConsensusEvent(NetworkStatusEvent):
   pass
 
 class NewDescEvent(Event):
-  def __init__(self, event_name, idlist):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, idlist, body):
+    Event.__init__(self, event_name, body)
     self.idlist = idlist
 
 class GuardEvent(Event):
-  def __init__(self, event_name, ev_type, guard, status):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, ev_type, guard, status, body):
+    Event.__init__(self, event_name, body)
     if "~" in guard:
       (self.idhex, self.nick) = guard[1:].split("~")
     elif "=" in guard:
@@ -216,8 +217,8 @@ class GuardEvent(Event):
 
 class BuildTimeoutSetEvent(Event):
   def __init__(self, event_name, set_type, total_times, timeout_ms, xm, alpha,
-               quantile):
-    Event.__init__(self, event_name)
+               quantile, body):
+    Event.__init__(self, event_name, body)
     self.set_type = set_type
     self.total_times = total_times
     self.timeout_ms = timeout_ms
@@ -227,8 +228,8 @@ class BuildTimeoutSetEvent(Event):
 
 class CircuitEvent(Event):
   def __init__(self, event_name, circ_id, status, path, purpose,
-         reason, remote_reason):
-    Event.__init__(self, event_name)
+         reason, remote_reason, body):
+    Event.__init__(self, event_name, body)
     self.circ_id = circ_id
     self.status = status
     self.path = path
@@ -238,8 +239,9 @@ class CircuitEvent(Event):
 
 class StreamEvent(Event):
   def __init__(self, event_name, strm_id, status, circ_id, target_host,
-         target_port, reason, remote_reason, source, source_addr, purpose):
-    Event.__init__(self, event_name)
+         target_port, reason, remote_reason, source, source_addr, purpose,
+         body):
+    Event.__init__(self, event_name, body)
     self.strm_id = strm_id
     self.status = status
     self.circ_id = circ_id
@@ -253,8 +255,8 @@ class StreamEvent(Event):
 
 class ORConnEvent(Event):
   def __init__(self, event_name, status, endpoint, age, read_bytes,
-         wrote_bytes, reason, ncircs):
-    Event.__init__(self, event_name)
+         wrote_bytes, reason, ncircs, body):
+    Event.__init__(self, event_name, body)
     self.status = status
     self.endpoint = endpoint
     self.age = age
@@ -264,21 +266,21 @@ class ORConnEvent(Event):
     self.ncircs = ncircs
 
 class StreamBwEvent(Event):
-  def __init__(self, event_name, strm_id, written, read):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, strm_id, written, read, body):
+    Event.__init__(self, event_name, body)
     self.strm_id = int(strm_id)
     self.bytes_read = int(read)
     self.bytes_written = int(written)
 
 class LogEvent(Event):
   def __init__(self, level, msg):
-    Event.__init__(self, level)
+    Event.__init__(self, level, msg)
     self.level = level
     self.msg = msg
 
 class AddrMapEvent(Event):
-  def __init__(self, event_name, from_addr, to_addr, when):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, from_addr, to_addr, when, body):
+    Event.__init__(self, event_name, body)
     self.from_addr = from_addr
     self.to_addr = to_addr
     self.when = when
@@ -290,14 +292,14 @@ class AddrMap:
     self.when = when
 
 class BWEvent(Event):
-  def __init__(self, event_name, read, written):
-    Event.__init__(self, event_name)
+  def __init__(self, event_name, read, written, body):
+    Event.__init__(self, event_name, body)
     self.read = read
     self.written = written
 
 class UnknownEvent(Event):
   def __init__(self, event_name, event_string):
-    Event.__init__(self, event_name)
+    Event.__init__(self, event_name, event_string)
     self.event_string = event_string
 
 ipaddress_re = re.compile(r"(\d{1,3}\.){3}\d{1,3}$")
@@ -1386,7 +1388,8 @@ class EventHandler(EventSink):
       if purpose: purpose = purpose[9:]
       if reason: reason = reason[8:]
       if remote: remote = remote[15:]
-      event = CircuitEvent(evtype, ident, status, path, purpose, reason, remote)
+      event = CircuitEvent(evtype, ident, status, path, purpose, reason,
+                           remote, body)
     elif evtype == "STREAM":
       #plog("DEBUG", "STREAM: "+body)
       m = re.match(r"(\S+)\s+(\S+)\s+(\S+)\s+(\S+)?:(\d+)(\sREASON=\S+)?(\sREMOTE_REASON=\S+)?(\sSOURCE=\S+)?(\sSOURCE_ADDR=\S+)?(\s+PURPOSE=\S+)?", body)
@@ -1404,7 +1407,8 @@ class EventHandler(EventSink):
         purpose = purpose.lstrip()
         purpose = purpose[8:]
       event = StreamEvent(evtype, ident, status, circ, target_host,
-               int(target_port), reason, remote, source, source_addr, purpose)
+               int(target_port), reason, remote, source, source_addr,
+               purpose, body)
     elif evtype == "ORCONN":
       m = re.match(r"(\S+)\s+(\S+)(\sAGE=\S+)?(\sREAD=\S+)?(\sWRITTEN=\S+)?(\sREASON=\S+)?(\sNCIRCS=\S+)?", body)
       if not m:
@@ -1422,18 +1426,18 @@ class EventHandler(EventSink):
       if wrote: wrote = int(wrote[9:])
       else: wrote = 0
       event = ORConnEvent(evtype, status, target, age, read, wrote,
-                reason, ncircs)
+                reason, ncircs, body)
     elif evtype == "STREAM_BW":
       m = re.match(r"(\d+)\s+(\d+)\s+(\d+)", body)
       if not m:
         raise ProtocolError("STREAM_BW event misformatted.")
-      event = StreamBwEvent(evtype, *m.groups())
+      event = StreamBwEvent(evtype, *m.groups(), body=body)
     elif evtype == "BW":
       m = re.match(r"(\d+)\s+(\d+)", body)
       if not m:
         raise ProtocolError("BANDWIDTH event misformatted.")
       read, written = map(long, m.groups())
-      event = BWEvent(evtype, read, written)
+      event = BWEvent(evtype, read, written, body)
     elif evtype in ("DEBUG", "INFO", "NOTICE", "WARN", "ERR"):
       event = LogEvent(evtype, body)
     elif evtype == "NEWDESC":
@@ -1441,7 +1445,7 @@ class EventHandler(EventSink):
       ids = []
       for i in ids_verb:
         ids.append(i.replace("~", "=").split("=")[0].replace("$",""))
-      event = NewDescEvent(evtype, ids)
+      event = NewDescEvent(evtype, ids, body)
     elif evtype == "ADDRMAP":
       # TODO: Also parse errors and GMTExpiry
       m = re.match(r'(\S+)\s+(\S+)\s+(\"[^"]+\"|\w+)', body)
@@ -1452,11 +1456,11 @@ class EventHandler(EventSink):
         when = None
       else:
         when = time.strptime(when[1:-1], "%Y-%m-%d %H:%M:%S")
-      event = AddrMapEvent(evtype, fromaddr, toaddr, when)
+      event = AddrMapEvent(evtype, fromaddr, toaddr, when, body)
     elif evtype == "NS":
-      event = NetworkStatusEvent(evtype, parse_ns_body(data))
+      event = NetworkStatusEvent(evtype, parse_ns_body(data), data)
     elif evtype == "NEWCONSENSUS":
-      event = NewConsensusEvent(evtype, parse_ns_body(data))
+      event = NewConsensusEvent(evtype, parse_ns_body(data), data)
     elif evtype == "BUILDTIMEOUT_SET":
       m = re.match(
         r"(\S+)\sTOTAL_TIMES=(\d+)\sTIMEOUT_MS=(\d+)\sXM=(\d+)\sALPHA=(\S+)\sCUTOFF_QUANTILE=(\S+)",
@@ -1464,11 +1468,11 @@ class EventHandler(EventSink):
       set_type, total_times, timeout_ms, xm, alpha, quantile = m.groups()
       event = BuildTimeoutSetEvent(evtype, set_type, int(total_times),
                                    int(timeout_ms), int(xm), float(alpha),
-                                   float(quantile))
+                                   float(quantile), body)
     elif evtype == "GUARD":
       m = re.match(r"(\S+)\s(\S+)\s(\S+)", body)
       entry, guard, status = m.groups()
-      event = GuardEvent(evtype, entry, guard, status)
+      event = GuardEvent(evtype, entry, guard, status, body)
     elif evtype == "TORCTL_TIMER":
       event = TimerEvent(evtype, data)
     else:
