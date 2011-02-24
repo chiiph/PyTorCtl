@@ -266,8 +266,8 @@ class ORConnEvent(Event):
     self.ncircs = ncircs
 
 class StreamBwEvent(Event):
-  def __init__(self, event_name, strm_id, written, read, body):
-    Event.__init__(self, event_name, body)
+  def __init__(self, event_name, saved_body, strm_id, written, read):
+    Event.__init__(self, event_name, saved_body)
     self.strm_id = int(strm_id)
     self.bytes_read = int(read)
     self.bytes_written = int(written)
@@ -1431,7 +1431,7 @@ class EventHandler(EventSink):
       m = re.match(r"(\d+)\s+(\d+)\s+(\d+)", body)
       if not m:
         raise ProtocolError("STREAM_BW event misformatted.")
-      event = StreamBwEvent(evtype, *m.groups(), body=body)
+      event = StreamBwEvent(evtype, body, *m.groups())
     elif evtype == "BW":
       m = re.match(r"(\d+)\s+(\d+)", body)
       if not m:
