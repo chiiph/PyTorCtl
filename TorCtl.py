@@ -1003,7 +1003,7 @@ class Connection:
   def set_option(self, key, value):
     """Set the value of the configuration option 'key' to the value 'value'.
     """
-    self.set_options([(key, value)])
+    return self.set_options([(key, value)])
 
   def set_options(self, kvlist):
     """Given a list of (key,value) pairs, set them as configuration
@@ -1012,7 +1012,7 @@ class Connection:
     if not kvlist:
       return
     msg = " ".join(["%s=\"%s\""%(k,quote(v)) for k,v in kvlist])
-    self.sendAndRecv("SETCONF %s\r\n"%msg)
+    return self.sendAndRecv("SETCONF %s\r\n"%msg)
 
   def reset_options(self, keylist):
     """Reset the options listed in 'keylist' to their default values.
@@ -1021,7 +1021,7 @@ class Connection:
        previous versions wanted you to set configuration keys to "".
        That no longer works.
     """
-    self.sendAndRecv("RESETCONF %s\r\n"%(" ".join(keylist)))
+    return self.sendAndRecv("RESETCONF %s\r\n"%(" ".join(keylist)))
 
   def get_consensus(self):
     """Get the pristine Tor Consensus. Returns a list of
