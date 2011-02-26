@@ -1143,21 +1143,23 @@ class Connection:
         0x0A : "USR1",
         0x0C : "USR2",
         0x0F : "TERM" }.get(sig,sig)
-    self.sendAndRecv("SIGNAL %s\r\n"%sig)
+    return self.sendAndRecv("SIGNAL %s\r\n"%sig)
 
   def resolve(self, host):
     """ Launch a remote hostname lookup request:
         'host' may be a hostname or IPv4 address
     """
     # TODO: handle "mode=reverse"
-    self.sendAndRecv("RESOLVE %s\r\n"%host)
+    return self.sendAndRecv("RESOLVE %s\r\n"%host)
 
   def map_address(self, kvList):
     """ Sends the MAPADDRESS command for each of the tuples in kvList """
     if not kvList:
       return
-    m = " ".join([ "%s=%s" for k,v in kvList])
+    m = " ".join([ "%s=%s" % (k,v) for k,v in kvList])
+    print(m)
     lines = self.sendAndRecv("MAPADDRESS %s\r\n"%m)
+    print(lines)
     r = []
     for _,line,_ in lines:
       try:
